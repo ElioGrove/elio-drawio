@@ -45,9 +45,16 @@ try {
   const bootstrap = await readFile(bootstrapPath, 'utf8');
   const marker = '// Global variable for desktop';
   if (!bootstrap.includes(marker)) throw new Error('Upstream bootstrap changed; review standalone parameter enforcement');
+  const ready = 'mxScriptsLoaded = true;\n                checkAllLoaded();';
+  const postConfig = "else if (!supportedDomain)\n                {\n                    mxscript('js/PostConfig.js');\n                }";
+  if (!bootstrap.includes(ready) || !bootstrap.includes(postConfig)) {
+    throw new Error('Upstream application loading changed; review configuration ordering');
+  }
   await writeFile(bootstrapPath, bootstrap.replace(marker,
     "// Standalone deployments do not publish development sources or integration plugins.\n" +
-    "urlParams['dev'] = '0'; urlParams['test'] = '0'; urlParams['plugins'] = '0'; delete urlParams.configure;\n\n" + marker));
+    "urlParams['dev'] = '0'; urlParams['test'] = '0'; urlParams['plugins'] = '0'; delete urlParams.configure;\n\n" + marker)
+    .replace(ready, "mxscript('js/PostConfig.js', function() { mxScriptsLoaded = true; checkAllLoaded(); });")
+    .replace(postConfig, ''));
   const result = await checkStatic(staging);
   // Only replace the previous output after the new output passes validation.
   await rm(output, { recursive: true, force: true });
