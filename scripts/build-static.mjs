@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { assertPublicPath, checkStatic } from './static-policy.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -41,6 +42,16 @@ try {
     .replaceAll('href="favicon.ico"', 'href="favicon.svg"')
     .replace(/<svg class="geSplashLogo"[\s\S]*?<\/svg>/, '<img class="geSplashLogo" src="favicon.svg" alt="Elio Draw">');
   await writeFile(join(staging, 'index.html'), html);
+  const version = createHash('sha256');
+  for (const path of ['index.html', '_headers', 'js/bootstrap.js', 'js/main.js', 'js/app.min.js', 'js/PreConfig.js', 'js/PostConfig.js']) {
+    version.update(await readFile(join(staging, path)));
+  }
+  version.update(await readFile(fileURLToPath(import.meta.url)));
+  const suffix = '?v=' + version.digest('hex').slice(0, 16);
+  for (const path of ['js/bootstrap.js', 'js/main.js']) {
+    html = html.replace(`src="${path}"`, `src="${path}${suffix}"`);
+  }
+  await writeFile(join(staging, 'index.html'), html);
   const bootstrapPath = join(staging, 'js/bootstrap.js');
   const bootstrap = await readFile(bootstrapPath, 'utf8');
   const marker = '// Global variable for desktop';
@@ -50,11 +61,15 @@ try {
   if (!bootstrap.includes(ready) || !bootstrap.includes(postConfig)) {
     throw new Error('Upstream application loading changed; review configuration ordering');
   }
-  await writeFile(bootstrapPath, bootstrap.replace(marker,
+  let standaloneBootstrap = bootstrap.replace(marker,
     "// Standalone deployments do not publish development sources or integration plugins.\n" +
     "urlParams['dev'] = '0'; urlParams['test'] = '0'; urlParams['plugins'] = '0'; delete urlParams.configure;\n\n" + marker)
     .replace(ready, "mxscript('js/PostConfig.js', function() { mxScriptsLoaded = true; checkAllLoaded(); });")
-    .replace(postConfig, ''));
+    .replace(postConfig, '');
+  for (const path of ['js/PreConfig.js', 'js/PostConfig.js', 'js/app.min.js']) {
+    standaloneBootstrap = standaloneBootstrap.replaceAll(`'${path}'`, `'${path}${suffix}'`);
+  }
+  await writeFile(bootstrapPath, standaloneBootstrap);
   const result = await checkStatic(staging);
   // Only replace the previous output after the new output passes validation.
   await rm(output, { recursive: true, force: true });
