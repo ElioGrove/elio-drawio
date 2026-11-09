@@ -1,5 +1,10 @@
 # draw.io
 
+## Elio Draw deployment
+
+This fork provides a local-first static deployment at **https://draw.thus.chat**.
+See [deployment instructions](docs/deployment.md) for the safe Pages build, feature boundaries, and upstream update process. Only generated `dist/` assets are published; server directories and OAuth credentials are excluded.
+
 ## About
 
 draw.io is a configurable diagramming and whiteboarding application, jointly owned and developed by draw.io Ltd (previously named JGraph) and draw.io AG. We also run a production deployment at https://app.diagrams.net.

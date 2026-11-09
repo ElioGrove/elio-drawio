@@ -1,0 +1,18 @@
+{
+  "name": "elio-drawio",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build-static.mjs",
+    "check": "node scripts/check-static.mjs dist",
+    "test": "node --test scripts/static-policy.test.mjs",
+    "preview": "wrangler pages dev dist --port 8788",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name elio-drawio --branch main"
+  },
+  "devDependencies": {
+    "wrangler": "4.158.0"
+  }
+}

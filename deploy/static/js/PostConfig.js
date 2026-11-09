@@ -1,0 +1,10 @@
+window.ICONSEARCH_PATH = null;
+window.ICON_SERVICE_PATH = null;
+window.EXPORT_URL = null;
+window.PROXY_URL = null;
+window.NOTIFICATIONS_URL = null;
+window.ALLOW_CUSTOM_PLUGINS = false;
+Editor.enableAi = false;
+Editor.enableServiceWorker = false;
+Editor.logoImage = 'favicon.svg';
+Editor.prototype.appName = 'Elio Draw';

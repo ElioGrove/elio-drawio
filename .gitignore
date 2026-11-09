@@ -2,6 +2,13 @@ bin
 build
 classes
 node_modules
+dist/
+.static-build/
+.wrangler/
+.env
+.env.*
+.dev.vars
+.dev.vars.*
 .vscode/settings.json
 src/main/webapp/WEB-INF/lib/animal-sniffer-annotations-*.jar
 src/main/webapp/WEB-INF/lib/annotations-*.jar
