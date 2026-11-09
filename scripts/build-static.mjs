@@ -10,7 +10,7 @@ const staging = join(root, '.static-build');
 const output = join(root, 'dist');
 const directories = ['images', 'img', 'styles', 'resources', 'mxgraph', 'shapes', 'stencils', 'templates', 'math4'];
 const jsDirectories = ['cryptojs', 'deflate', 'elk', 'freehand', 'gliffy', 'jszip', 'libavoid-js', 'mermaid', 'orgchart', 'plantuml', 'rough', 'sanitizer', 'spin', 'vsd'];
-const files = ['index.html', 'clear.html', 'open.html', 'vsdxImporter.html', 'shortcuts.svg', 'export-fonts.css',
+const files = ['index.html', 'favicon.ico', 'clear.html', 'open.html', 'vsdxImporter.html', 'shortcuts.svg', 'export-fonts.css',
   ...['bootstrap.js', 'main.js', 'app.min.js', 'extensions.min.js', 'orgchart.min.js', 'shapes-14-6-5.min.js', 'stencils.min.js', 'viewer.min.js', 'viewer-static.min.js', 'clear.js', 'open.js', 'math-print.js', 'vsdxImporter.js'].map(f => `js/${f}`)];
 
 await rm(staging, { recursive: true, force: true });
@@ -36,11 +36,7 @@ try {
   let html = await readFile(join(staging, 'index.html'), 'utf8');
   html = html.replace(/<title>.*?<\/title>/, '<title>Elio Draw</title>')
     .replace(/<meta itemprop="image"[^>]*>/, '')
-    .replace(/<meta name="msapplication-config"[^>]*>/, '')
-    .replace(/<link rel="apple-touch-icon"[^>]*>/, '')
-    .replace('href="https://app.diagrams.net"', 'href="https://draw.thus.chat/"')
-    .replaceAll('href="favicon.ico"', 'href="favicon.svg"')
-    .replace(/<svg class="geSplashLogo"[\s\S]*?<\/svg>/, '<img class="geSplashLogo" src="favicon.svg" alt="Elio Draw">');
+    .replace('href="https://app.diagrams.net"', 'href="https://draw.thus.chat/"');
   await writeFile(join(staging, 'index.html'), html);
   const version = createHash('sha256');
   for (const path of ['index.html', '_headers', 'js/bootstrap.js', 'js/main.js', 'js/app.min.js', 'js/PreConfig.js', 'js/PostConfig.js']) {
@@ -50,6 +46,9 @@ try {
   const suffix = '?v=' + version.digest('hex').slice(0, 16);
   for (const path of ['js/bootstrap.js', 'js/main.js']) {
     html = html.replace(`src="${path}"`, `src="${path}${suffix}"`);
+  }
+  for (const path of ['favicon.ico', 'images/manifest.json', 'images/apple-touch-icon.png']) {
+    html = html.replaceAll(`href="${path}"`, `href="${path}${suffix}"`);
   }
   await writeFile(join(staging, 'index.html'), html);
   const bootstrapPath = join(staging, 'js/bootstrap.js');

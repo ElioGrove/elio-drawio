@@ -6,6 +6,14 @@ window.DRAWIO_LIGHTBOX_URL = window.location.origin;
 window.DRAWIO_VIEWER_URL = window.location.origin + '/js/viewer-static.min.js';
 window.DRAW_MATH_URL = 'math4/es5';
 window.DRAWIO_CONFIG = { defaultFonts: ['Helvetica', 'Arial', 'Verdana', 'Times New Roman', 'Courier New'], enableAi: false };
+// Default to Simplified Chinese while preserving explicit and saved choices.
+if (urlParams['lang'] == null) {
+  var elioSavedLanguage = null;
+  try {
+    elioSavedLanguage = JSON.parse(localStorage.getItem('.drawio-config') || '{}').language;
+  } catch (error) { /* Storage can be unavailable or contain invalid JSON. */ }
+  if (!elioSavedLanguage) window.mxLanguage = 'zh';
+}
 // Enforce local storage modes even when a visitor supplies conflicting parameters.
 Object.assign(urlParams, {
   lockdown: '1', sync: 'manual', gapi: '0', picker: '0', db: '0', od: '0',

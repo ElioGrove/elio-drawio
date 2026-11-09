@@ -6,7 +6,6 @@ window.NOTIFICATIONS_URL = null;
 window.ALLOW_CUSTOM_PLUGINS = false;
 Editor.enableAi = false;
 Editor.enableServiceWorker = false;
-Editor.logoImage = 'favicon.svg';
 Editor.prototype.appName = 'Elio Draw';
 
 // Lockdown also hides the upstream template picker. Restore the local gallery
