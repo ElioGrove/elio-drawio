@@ -79,7 +79,7 @@ async function openFile(file) {
     const xml = await response.text();
     const frame = document.createElement('iframe');
     frame.title = '流程图编辑器';
-    current = { ...file, etag: response.headers.get('ETag'), xml, saved: xml,
+    current = { ...file, etag: response.headers.get('X-Diagram-Version'), xml, saved: xml,
       changed: 0, lastWrite: Date.now(), ready: false, writing: false, frame };
     element('library').hidden = true;
     element('workspace').hidden = false;
@@ -128,14 +128,14 @@ async function save(session, manual) {
       headers: { 'If-Match': session.etag, 'Content-Type': 'text/plain; charset=utf-8' },
       body: xml
     });
-    session.etag = response.headers.get('ETag');
+    session.etag = response.headers.get('X-Diagram-Version');
     session.saved = xml;
     session.autoPaused = false;
     const dirty = session.xml !== session.saved;
     status(dirty ? '还有修改待保存' : '已保存到云端');
     post(session, { action: 'status', message: dirty ? '还有修改待保存' : '已保存到云端', modified: dirty });
   } catch (error) {
-      session.conflict = error.status === 412;
+    session.conflict = error.status === 412;
     session.autoPaused = true;
     status(error.message);
   } finally {

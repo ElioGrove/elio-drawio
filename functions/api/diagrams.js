@@ -83,7 +83,13 @@ function describe(object, id) {
 
 function xmlResponse(object) {
   return new Response(object.body, {
-    headers: { ...headers, ETag: object.httpEtag, 'Content-Type': 'text/plain; charset=utf-8' }
+    headers: {
+      ...headers,
+      ETag: object.httpEtag,
+      // Cloudflare can weaken the HTTP ETag when serving a compressed response.
+      'X-Diagram-Version': object.httpEtag,
+      'Content-Type': 'text/plain; charset=utf-8'
+    }
   });
 }
 
@@ -132,7 +138,9 @@ async function diagrams(request, bucket, url) {
       customMetadata: { name: url.searchParams.get('name')?.slice(0, 180) || '未命名绘图' }
     });
     if (!object) return failure('云端已有新版本。请先下载本次修改，再重新打开云端版本。', 412);
-    return json(describe(object, id), 200, { ETag: object.httpEtag });
+    return json(describe(object, id), 200, {
+      ETag: object.httpEtag, 'X-Diagram-Version': object.httpEtag
+    });
   }
 
   return failure('不支持此操作。', 405);
