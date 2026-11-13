@@ -81,6 +81,11 @@ function describe(object, id) {
     updated: object.uploaded.toISOString(), size: object.size, etag: object.httpEtag };
 }
 
+function diagramName(url) {
+  const name = url.searchParams.get('name')?.trim().replace(/\.drawio$/i, '');
+  return name && name.length <= 180 && !/[\x00-\x1f]/.test(name) ? name : null;
+}
+
 function xmlResponse(object) {
   return new Response(object.body, {
     headers: {
@@ -105,19 +110,20 @@ async function diagrams(request, bucket, url) {
       cursor: url.searchParams.get('cursor') || undefined
     });
     return json({
-      files: list.objects.map(object => describe(object, object.key.slice(prefix.length))),
+      files: list.objects.filter(object => !object.customMetadata?.deleted)
+        .map(object => describe(object, object.key.slice(prefix.length))),
       next: list.truncated ? list.cursor : null
     });
   }
 
   if (method === 'GET') {
     const object = await bucket.get(key);
-    return object ? xmlResponse(object) : failure('流程图不存在。', 404);
+    return object && !object.customMetadata?.deleted ? xmlResponse(object) : failure('流程图不存在。', 404);
   }
 
   if (method === 'POST' && id === null) {
-    const name = url.searchParams.get('name')?.trim().replace(/\.drawio$/i, '');
-    if (!name || name.length > 180 || /[\x00-\x1f]/.test(name)) {
+    const name = diagramName(url);
+    if (!name) {
       return failure('请输入有效的文件名。', 400);
     }
     const { bytes, error } = await readDiagram(request);
@@ -127,17 +133,38 @@ async function diagrams(request, bucket, url) {
     return json(describe(object, newId), 201, { ETag: object.httpEtag });
   }
 
-  if (method === 'PUT' && id !== null) {
+  if (['PUT', 'PATCH', 'DELETE'].includes(method) && id !== null) {
     const etag = request.headers.get('If-Match');
     if (!etag || !/^"[a-f0-9]{32}"$/.test(etag)) return failure('缺少当前版本。', 428);
-    const { bytes, error } = await readDiagram(request);
-    if (error) return error;
-    const object = await bucket.put(key, bytes, {
+    const existing = method === 'PATCH' ? await bucket.get(key) : await bucket.head(key);
+    if (!existing || existing.customMetadata?.deleted) return failure('流程图不存在。', 404);
+    const conflict = () => failure('云端已有新版本。请刷新列表或重新打开流程图后重试。', 412);
+    if (existing.httpEtag !== etag) return conflict();
+    const options = {
       onlyIf: { etagMatches: etag.slice(1, -1) },
-      // R2 replaces metadata on put, so the caller uses the stored display name.
-      customMetadata: { name: url.searchParams.get('name')?.slice(0, 180) || '未命名绘图' }
-    });
-    if (!object) return failure('云端已有新版本。请先下载本次修改，再重新打开云端版本。', 412);
+      customMetadata: { ...existing.customMetadata }
+    };
+    let contents;
+    if (method === 'DELETE') {
+      // R2 delete has no precondition. Invalidate the current version before removing it.
+      options.customMetadata = { deleted: 'true' };
+      contents = crypto.randomUUID();
+    } else if (method === 'PATCH') {
+      const name = diagramName(url);
+      if (!name) return failure('请输入有效的文件名。', 400);
+      options.customMetadata.name = name;
+      contents = await existing.arrayBuffer();
+    } else {
+      const { bytes, error } = await readDiagram(request);
+      if (error) return error;
+      contents = bytes;
+    }
+    const object = await bucket.put(key, contents, options);
+    if (!object) return conflict();
+    if (method === 'DELETE') {
+      await bucket.delete(key);
+      return new Response(null, { status: 204, headers });
+    }
     return json(describe(object, id), 200, {
       ETag: object.httpEtag, 'X-Diagram-Version': object.httpEtag
     });

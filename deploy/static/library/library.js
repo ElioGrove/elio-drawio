@@ -4,6 +4,9 @@ const quietPeriod = 30_000;
 const automaticInterval = 120_000;
 const blank = '<mxfile><diagram name="第 1 页"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel></diagram></mxfile>';
 let files = [];
+let nameOrder = 0;
+const names = new Intl.Collator('zh-CN', { numeric: true });
+const sizes = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 1 });
 let current;
 let timer;
 let busy = false;
@@ -29,21 +32,67 @@ async function request(url, options) {
 function show(message) { element('notice').textContent = message; }
 function status(message) { element('save-status').textContent = message; }
 
+function sizeLabel(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 ** 2) return sizes.format(bytes / 1024) + ' KiB';
+  return sizes.format(bytes / 1024 ** 2) + ' MiB';
+}
+
+function fileButton(label, className, action) {
+  const button = document.createElement('button');
+  button.textContent = label;
+  button.className = className;
+  button.addEventListener('click', action);
+  return button;
+}
+
+async function changeFile(file, method, name) {
+  if (busy || current) return;
+  busy = true;
+  try {
+    await request(endpoint({ id: file.id, ...(name === undefined ? {} : { name }) }), {
+      method, headers: { 'If-Match': file.etag }
+    });
+    await refresh();
+  } catch (error) {
+    show(error.message);
+  } finally {
+    busy = false;
+  }
+}
+
 function render() {
-  const query = element('search').value.toLowerCase();
   const list = element('list');
   list.replaceChildren();
-  for (const file of files.filter(f => f.name.toLowerCase().includes(query))) {
-    const row = document.createElement('li');
-    const button = document.createElement('button');
-    button.textContent = file.name;
-    button.addEventListener('click', () => openFile(file));
+  const ordered = nameOrder ? [...files].sort((a, b) => nameOrder * names.compare(a.name, b.name)) : files;
+  for (const file of ordered) {
+    const row = list.insertRow();
+    row.insertCell().append(fileButton(file.name, 'file-link', () => openFile(file)));
+    row.insertCell().textContent = sizeLabel(file.size);
     const time = document.createElement('time');
     time.dateTime = file.updated;
     time.textContent = new Date(file.updated).toLocaleString('zh-CN');
-    row.append(button, time);
-    list.append(row);
+    row.insertCell().append(time);
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    actions.append(
+      fileButton('重命名', '', () => {
+        const name = prompt('新的文件名称', file.name)?.trim();
+        if (name && name !== file.name) changeFile(file, 'PATCH', name);
+      }),
+      fileButton('删除', 'delete', () => {
+        if (confirm('永久删除「' + file.name + '」？')) changeFile(file, 'DELETE');
+      })
+    );
+    row.insertCell().append(actions);
   }
+}
+
+function showEditor(open) {
+  element('library-bar').hidden = open;
+  element('library').hidden = open;
+  element('editor-bar').hidden = !open;
+  element('workspace').hidden = !open;
 }
 
 async function refresh() {
@@ -81,8 +130,7 @@ async function openFile(file) {
     frame.title = '流程图编辑器';
     current = { ...file, etag: response.headers.get('X-Diagram-Version'), xml, saved: xml,
       changed: 0, lastWrite: Date.now(), ready: false, writing: false, frame };
-    element('library').hidden = true;
-    element('workspace').hidden = false;
+    showEditor(true);
     element('name').textContent = file.name;
     element('save').disabled = true;
     element('download').disabled = false;
@@ -172,7 +220,12 @@ window.addEventListener('message', event => {
   }
 });
 
-element('search').addEventListener('input', render);
+element('sort-name').addEventListener('click', () => {
+  nameOrder = nameOrder === 1 ? -1 : 1;
+  element('name-heading').setAttribute('aria-sort', nameOrder === 1 ? 'ascending' : 'descending');
+  element('sort-arrow').textContent = nameOrder === 1 ? '↑' : '↓';
+  render();
+});
 element('save').addEventListener('click', () => {
   if (current?.ready) post(current, { action: 'invokeAction', actionName: 'save' });
 });
@@ -195,8 +248,7 @@ element('back').addEventListener('click', () => {
   clearTimeout(timer);
   current = undefined;
   element('editor').replaceChildren();
-  element('workspace').hidden = true;
-  element('library').hidden = false;
+  showEditor(false);
   refresh().catch(error => show(error.message));
 });
 window.addEventListener('beforeunload', event => {

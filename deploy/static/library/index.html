@@ -3,37 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>我的流程图 · Elio Draw</title>
+<title>Elio Draw</title>
 <link rel="icon" href="/favicon.ico">
 <link rel="stylesheet" href="/library/library.css">
 <script src="/library/library.js" type="module"></script>
 </head>
 <body>
-<header>
-  <div><h1>我的流程图</h1><p>Elio Draw</p></div>
+<header id="library-bar" class="bar">
+  <h1>Elio Draw</h1>
   <div class="toolbar">
-    <a href="/">打开独立编辑器</a>
+    <a class="control" href="/">打开独立编辑器</a>
     <button id="import" disabled>导入文件</button>
     <input id="files" type="file" accept=".drawio,.xml" multiple hidden>
     <button id="new" class="primary" disabled>新建流程图</button>
   </div>
 </header>
+<header id="editor-bar" class="bar" hidden>
+  <button id="back">返回列表</button>
+  <strong id="name"></strong>
+  <span id="save-status" role="status"></span>
+  <label class="control"><input id="auto" type="checkbox"> 自动同步</label>
+  <button id="download" disabled>下载副本</button>
+  <button id="save" class="primary" disabled>手动保存</button>
+</header>
 <main>
   <p id="notice" role="status">正在载入流程图…</p>
   <section id="library">
-    <label for="search">搜索流程图</label>
-    <input id="search" type="search" placeholder="按文件名搜索">
-    <ul id="list"></ul>
+    <table>
+      <thead><tr>
+        <th scope="col" id="name-heading" aria-sort="none"><button id="sort-name">名称 <span id="sort-arrow" aria-hidden="true">↕</span></button></th>
+        <th scope="col">文件大小</th>
+        <th scope="col">上次更新</th>
+        <th scope="col">操作</th>
+      </tr></thead>
+      <tbody id="list"></tbody>
+    </table>
   </section>
   <section id="workspace" hidden>
-    <div class="editorbar">
-      <button id="back">返回列表</button>
-      <strong id="name"></strong>
-      <span id="save-status" role="status"></span>
-      <label><input id="auto" type="checkbox"> 自动同步</label>
-      <button id="download" disabled>下载副本</button>
-      <button id="save" class="primary" disabled>手动保存</button>
-    </div>
     <div id="editor"></div>
   </section>
 </main>
