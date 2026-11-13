@@ -14,5 +14,9 @@
   },
   "devDependencies": {
     "wrangler": "4.158.0"
+  },
+  "dependencies": {
+    "jose": "6.2.15",
+    "saxes": "6.0.0"
   }
 }

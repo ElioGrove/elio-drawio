@@ -1,4 +1,4 @@
-# Elio Draw 静态部署
+# Elio Draw 部署
 
 站点域名：`https://draw.thus.chat`。保留 draw.io fork 的上游目录，通过白名单构建生成 `dist/`，不直接发布 `src/main/webapp`。
 
@@ -22,8 +22,8 @@ npm run preview
 - 项目名：`elio-drawio`；Framework：None；Root directory：仓库根目录。
 - 构建命令：`npm test && npm run build`；输出目录：`dist`。
 - Node.js：22 或更新版本。不要添加任何 OAuth secret 构建变量。
-- 不配置 Functions、数据库或存储服务，保持免费纯静态托管。
-- Git 集成自动构建；也可在已登录的同一账户运行 `npm run deploy` 手动上传同一产物。
+- 生产分支推送后由 Cloudflare Git 集成构建和部署。
+- 流程库使用 Pages Functions 和私有 R2。访问策略和服务端配置见[私有流程库](private-library.md)。
 - 在项目 Custom domains 中关联 `draw.thus.chat`，并确认 DNS CNAME 指向实际 Pages 项目域名。
 
 ## 发布边界

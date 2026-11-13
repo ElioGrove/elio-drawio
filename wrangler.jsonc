@@ -2,5 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "elio-drawio",
   "pages_build_output_dir": "./dist",
-  "compatibility_date": "2026-11-09"
+  "compatibility_date": "2026-11-09",
+  "vars": { "ACCESS_HOST": "draw.thus.chat" },
+  "r2_buckets": [{ "binding": "DRAWIO_FILES", "bucket_name": "elio-drawio-files" }]
 }
