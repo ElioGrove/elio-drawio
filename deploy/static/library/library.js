@@ -61,12 +61,18 @@ async function changeFile(file, method, name) {
   }
 }
 
+const twoColumns = matchMedia('(min-width: 960px)');
+
 function render() {
   const list = element('list');
+  const second = element('second-list');
   list.replaceChildren();
+  second.replaceChildren();
+  element('second-table').hidden = !twoColumns.matches;
   const ordered = nameOrder ? [...files].sort((a, b) => nameOrder * names.compare(a.name, b.name)) : files;
-  for (const file of ordered) {
-    const row = list.insertRow();
+  const split = twoColumns.matches ? Math.ceil(ordered.length / 2) : ordered.length;
+  for (const [index, file] of ordered.entries()) {
+    const row = (index < split ? list : second).insertRow();
     row.insertCell().append(fileButton(file.name, 'file-link', () => openFile(file)));
     row.insertCell().textContent = sizeLabel(file.size);
     const time = document.createElement('time');
@@ -220,12 +226,18 @@ window.addEventListener('message', event => {
   }
 });
 
-element('sort-name').addEventListener('click', () => {
+function sortByName() {
   nameOrder = nameOrder === 1 ? -1 : 1;
-  element('name-heading').setAttribute('aria-sort', nameOrder === 1 ? 'ascending' : 'descending');
-  element('sort-arrow').textContent = nameOrder === 1 ? '↑' : '↓';
+  for (const prefix of ['', 'second-']) {
+    element(prefix + 'name-heading').setAttribute('aria-sort', nameOrder === 1 ? 'ascending' : 'descending');
+    element(prefix + 'sort-arrow').textContent = nameOrder === 1 ? '↑' : '↓';
+  }
   render();
-});
+}
+
+element('sort-name').addEventListener('click', sortByName);
+element('second-sort-name').addEventListener('click', sortByName);
+twoColumns.addEventListener('change', render);
 element('save').addEventListener('click', () => {
   if (current?.ready) post(current, { action: 'invokeAction', actionName: 'save' });
 });
