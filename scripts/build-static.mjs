@@ -51,6 +51,16 @@ try {
     html = html.replaceAll(`href="${path}"`, `href="${path}${suffix}"`);
   }
   await writeFile(join(staging, 'index.html'), html);
+  const libraryIndex = join(staging, 'library/index.html');
+  let libraryHtml = await readFile(libraryIndex, 'utf8');
+  for (const extension of ['css', 'js']) {
+    const asset = `library/library.${extension}`;
+    const digest = createHash('sha256').update(await readFile(join(staging, asset))).digest('hex').slice(0, 16);
+    const versionedAsset = `library/library-${digest}.${extension}`;
+    await rename(join(staging, asset), join(staging, versionedAsset));
+    libraryHtml = libraryHtml.replace(`"/${asset}"`, `"/${versionedAsset}"`);
+  }
+  await writeFile(libraryIndex, libraryHtml);
   const bootstrapPath = join(staging, 'js/bootstrap.js');
   const bootstrap = await readFile(bootstrapPath, 'utf8');
   const marker = '// Global variable for desktop';
