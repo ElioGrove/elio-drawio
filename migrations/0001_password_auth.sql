@@ -1,0 +1,2 @@
+CREATE TABLE password_sessions (id TEXT PRIMARY KEY, expires INTEGER NOT NULL);
+CREATE TABLE password_attempts (ip TEXT PRIMARY KEY, window INTEGER NOT NULL, count INTEGER NOT NULL);

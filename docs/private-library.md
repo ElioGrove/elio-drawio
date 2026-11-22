@@ -6,10 +6,6 @@
 
 ## Cloudflare 配置
 
-1. 在 Zero Trust 启用 One-time PIN。创建只包含授权邮箱的可复用 Allow 策略。将策略用于覆盖 `draw.thus.chat` 的自托管应用，并限制该应用使用验证码登录。
-2. 为 Pages 生产和预览地址分别启用 Access，或将生产默认地址重定向到自定义域并保护预览地址。备用域名始终不能调用文件 API。
-3. 通过 Pages 的生产环境 Secret 配置 `ACCESS_ISSUER=https://<团队>.cloudflareaccess.com`、`ACCESS_AUD=<自定义域 Access 应用的 AUD>`、`ACCESS_EMAIL=<允许登录的邮箱>`。Wrangler 已声明 `ACCESS_HOST=draw.thus.chat`。Functions 按签名、签发者、受众、有效期和邮箱检查 Access JWT。配置不完整时拒绝访问。
-4. 仓库的 Wrangler 配置绑定私有 R2 桶。推送生产分支 `main` 触发 Cloudflare Pages 原生 Git 部署。文件路由限定为 `/api/diagrams`。
-5. 先确认未登录不能读取数据，再用授权邮箱登录并导入样例，在另一设备打开。测试两个编辑会话保存同一文件时，较旧版本收到冲突提示。
+整站由 Pages Functions 验证密码。生产 Secret `ADMIN_PASSWORD` 至少 20 个字符。专属 D1 库存储会话摘要与登录限流记录，部署前执行 `wrangler d1 migrations apply DB --remote`。在 Pages 设置中将免费请求耗尽时的行为设为 Fail closed。生产入口为 draw.thus.chat，备用主机拒绝访问。会话有效期七天，访问 /auth/logout 可退出。
 
 R2 Standard 账户共享免费额度。超过免费额度后按量计费。首版通过按需列表请求、同步间隔和文件大小上限控制使用量。

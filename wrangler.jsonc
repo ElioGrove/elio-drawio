@@ -3,6 +3,7 @@
   "name": "elio-drawio",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-11-09",
-  "vars": { "ACCESS_HOST": "draw.thus.chat" },
+  "vars": { "APP_HOST": "draw.thus.chat" },
+  "d1_databases": [{ "binding": "DB", "database_name": "elio-drawio-auth", "database_id": "5788579f-36b8-4d6c-bc88-b666b1dbb29d" }],
   "r2_buckets": [{ "binding": "DRAWIO_FILES", "bucket_name": "elio-drawio-files" }]
 }

@@ -1,10 +1,8 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { SaxesParser } from 'saxes';
 
 const maxSize = 10 * 1024 * 1024;
 const prefix = 'diagrams/';
 const idPattern = /^[0-9a-f-]{36}$/;
-const keySets = new Map();
 
 const headers = {
   'Cache-Control': 'private, no-store',
@@ -17,26 +15,6 @@ function json(value, status = 200, extra = {}) {
 
 function failure(message, status) {
   return json({ error: message }, status);
-}
-
-async function authorized(request, env) {
-  const issuer = env.ACCESS_ISSUER;
-  const token = request.headers.get('Cf-Access-Jwt-Assertion');
-  if (!issuer || !env.ACCESS_AUD || !env.ACCESS_EMAIL || !token) return false;
-  try {
-    if (!keySets.has(issuer)) {
-      keySets.set(issuer, createRemoteJWKSet(new URL('/cdn-cgi/access/certs', issuer)));
-    }
-    const { payload } = await jwtVerify(token, keySets.get(issuer), {
-      issuer,
-      audience: env.ACCESS_AUD,
-      algorithms: ['RS256'],
-      requiredClaims: ['exp', 'email']
-    });
-    return payload.email.toLowerCase() === env.ACCESS_EMAIL.toLowerCase();
-  } catch {
-    return false;
-  }
 }
 
 async function readDiagram(request) {
@@ -175,9 +153,6 @@ async function diagrams(request, bucket, url) {
 
 export async function onRequest({ request, env }) {
   const url = new URL(request.url);
-  // The browser UI and its file API share the protected hostname.
-  if (!env.ACCESS_HOST || url.hostname !== env.ACCESS_HOST) return failure('入口不可用。', 404);
-  if (!await authorized(request, env)) return failure('请使用授权邮箱登录。', 401);
   if (request.method !== 'GET' && request.headers.get('Origin') !== url.origin) {
     return failure('请求来源无效。', 403);
   }
