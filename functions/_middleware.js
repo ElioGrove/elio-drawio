@@ -28,6 +28,18 @@ export async function onRequest({ request, env, next }) {
       },
     });
   }
+  if (
+    (request.method === 'GET' || request.method === 'HEAD') &&
+    (url.pathname === '/favicon.ico' ||
+      url.pathname === '/favicon.svg' ||
+      url.pathname === '/images/apple-touch-icon.png')
+  ) {
+    const upstream = await next();
+    const response = new Response(upstream.body, upstream);
+    response.headers.set('Cache-Control', 'public, max-age=3600');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    return response;
+  }
   const denied = await passwordGate(request, env);
   if (denied) return denied;
   const upstream = await next();

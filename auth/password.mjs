@@ -29,32 +29,32 @@ const pageHeaders = {
   'Cache-Control': 'private, no-store',
   'Content-Type': 'text/html; charset=utf-8',
   'Content-Security-Policy':
-    "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+    "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
   'Referrer-Policy': 'same-origin',
   'X-Content-Type-Options': 'nosniff',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 const sessionKey = async (token, secret) => hex(await digest(token + ':' + secret));
 const baseCss =
-  '*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px 10vh;background:#000;color:#fff;font:15px/1.4 system-ui,-apple-system,BlinkMacSystemFont,sans-serif}.emblem{width:min(320px,72vw);margin-bottom:36px;user-select:none}.emblem svg{display:block;width:100%;height:auto}form{width:min(300px,84vw);display:flex;flex-direction:column;gap:12px}input,button,a{width:100%;height:44px;border-radius:8px;font:inherit}input{padding:0 14px;background:#0e0e0e;color:#fff;border:1px solid #2a2a2a;outline:none;transition:border-color .15s}input::placeholder{color:#666}input:focus{border-color:#666}button{border:1px solid #333;background:#000;color:#fff;font-weight:600;cursor:pointer;transition:background-color .15s,border-color .15s}button:hover{background:#141414;border-color:#666}button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}a{display:grid;place-items:center;border:1px solid #2a2a2a;color:#a3a3a3;text-decoration:none;transition:border-color .15s,color .15s}a:hover{border-color:#666;color:#fff}p{margin:0;text-align:center;font-size:13px;color:#ef4444}';
+  '*{box-sizing:border-box}body{margin:0;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px 10vh;background:#000;color:#fff;font:15px/1.4 system-ui,-apple-system,BlinkMacSystemFont,sans-serif}.emblem{width:min(320px,72vw);margin-bottom:36px;user-select:none}.emblem svg{display:block;width:100%;height:auto}form{width:min(300px,84vw);display:flex;flex-direction:column;gap:12px}input,button,a{width:100%;height:44px;border-radius:8px;font:inherit}input{padding:0 14px;background:#0e0e0e;color:#fff;border:1px solid #2a2a2a;outline:none;transition:border-color .15s}input::placeholder{color:#666}input:focus{border-color:#666}button{border:1px solid #333;background:#000;color:#888;font-weight:600;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}button:hover{background:#141414;border-color:#666;color:#bbb}button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}a{display:grid;place-items:center;border:1px solid #2a2a2a;color:#a3a3a3;text-decoration:none;transition:border-color .15s,color .15s}a:hover{border-color:#666;color:#fff}p{margin:0;text-align:center;font-size:13px;color:#ef4444}';
 function loginPage(status = 200, message = '', library = false, extraHeaders = {}) {
   const alert = message ? '<p role="alert">' + escapeHtml(message) + '</p>' : '';
   return new Response(
-    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Sign In</title><style>' +
+    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><link rel="icon" href="/favicon.ico" sizes="any"><title>Sign In</title><style>' +
       baseCss +
       '</style><div class="emblem" aria-hidden="true">' +
       egSvg +
       '</div><form method="post" action="/auth/login' +
       (library ? '?library=1' : '') +
-      '"><input type="password" name="password" placeholder="Password" aria-label="Password" autocomplete="current-password" required autofocus>' +
+      '"><input type="password" name="password" placeholder="PASSWORD" aria-label="Password" autocomplete="current-password" required autofocus>' +
       alert +
-      '<button type="submit">Sign In</button></form></html>',
+      '<button type="submit">SIGN IN</button></form></html>',
     { status, headers: { ...pageHeaders, ...extraHeaders } },
   );
 }
 function logoutPage() {
   return new Response(
-    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Sign Out</title><style>' +
+    '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><link rel="icon" href="/favicon.ico" sizes="any"><title>Sign Out</title><style>' +
       baseCss +
       '</style><div class="emblem" aria-hidden="true">' +
       egSvg +
