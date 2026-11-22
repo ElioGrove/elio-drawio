@@ -2,7 +2,7 @@ import { SaxesParser } from 'saxes';
 
 const maxSize = 10 * 1024 * 1024;
 const prefix = 'diagrams/';
-const idPattern = /^[0-9a-f-]{36}$/;
+const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const headers = {
   'Cache-Control': 'private, no-store',
@@ -40,6 +40,7 @@ async function readDiagram(request) {
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  chunks.length = 0;
   try {
     const xml = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     const parser = new SaxesParser();
@@ -61,7 +62,7 @@ function describe(object, id) {
 
 function diagramName(url) {
   const name = url.searchParams.get('name')?.trim().replace(/\.drawio$/i, '');
-  return name && name.length <= 180 && !/[\x00-\x1f]/.test(name) ? name : null;
+  return name && name.length <= 180 && !/[\x00-\x1f\x7f]/.test(name) ? name : null;
 }
 
 function xmlResponse(object) {
@@ -108,7 +109,10 @@ async function diagrams(request, bucket, url) {
     if (error) return error;
     const newId = crypto.randomUUID();
     const object = await bucket.put(prefix + newId, bytes, { customMetadata: { name } });
-    return json(describe(object, newId), 201, { ETag: object.httpEtag });
+    return json(describe(object, newId), 201, {
+      ETag: object.httpEtag,
+      'X-Diagram-Version': object.httpEtag
+    });
   }
 
   if (['PUT', 'PATCH', 'DELETE'].includes(method) && id !== null) {
@@ -140,7 +144,15 @@ async function diagrams(request, bucket, url) {
     const object = await bucket.put(key, contents, options);
     if (!object) return conflict();
     if (method === 'DELETE') {
-      await bucket.delete(key);
+      try {
+        await bucket.delete(key);
+      } catch {
+        try {
+          await bucket.delete(key);
+        } catch (cleanupError) {
+          console.error('diagram tombstone delete failed', { name: cleanupError?.name });
+        }
+      }
       return new Response(null, { status: 204, headers });
     }
     return json(describe(object, id), 200, {
@@ -159,7 +171,8 @@ export async function onRequest({ request, env }) {
   if (!env.DRAWIO_FILES) return failure('云端存储尚未绑定。', 503);
   try {
     return await diagrams(request, env.DRAWIO_FILES, url);
-  } catch {
+  } catch (error) {
+    console.error('diagrams api failed', { method: request.method, name: error?.name });
     return failure('云端存储暂时不可用，请重试。', 503);
   }
 }

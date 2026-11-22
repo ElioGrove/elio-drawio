@@ -40,6 +40,7 @@ function sizeLabel(bytes) {
 
 function fileButton(label, className, action) {
   const button = document.createElement('button');
+  button.type = 'button';
   button.textContent = label;
   button.className = className;
   button.addEventListener('click', action);
@@ -68,9 +69,11 @@ function render() {
   const second = element('second-list');
   list.replaceChildren();
   second.replaceChildren();
-  element('second-table').hidden = !twoColumns.matches;
   const ordered = nameOrder ? [...files].sort((a, b) => nameOrder * names.compare(a.name, b.name)) : files;
-  const split = twoColumns.matches ? Math.ceil(ordered.length / 2) : ordered.length;
+  const hasTwoColumns = twoColumns.matches && ordered.length > 1;
+  element('library').hidden = Boolean(current) || ordered.length === 0;
+  element('second-table').hidden = !hasTwoColumns;
+  const split = hasTwoColumns ? Math.ceil(ordered.length / 2) : ordered.length;
   for (const [index, file] of ordered.entries()) {
     const row = (index < split ? list : second).insertRow();
     row.insertCell().append(fileButton(file.name, 'file-link', () => openFile(file)));
@@ -96,7 +99,7 @@ function render() {
 
 function showEditor(open) {
   element('library-bar').hidden = open;
-  element('library').hidden = open;
+  element('library').hidden = open || files.length === 0;
   element('editor-bar').hidden = !open;
   element('workspace').hidden = !open;
 }
@@ -123,7 +126,7 @@ async function create(name, xml) {
 }
 
 function post(session, message) {
-  session.frame.contentWindow.postMessage(JSON.stringify(message), location.origin);
+  session.frame.contentWindow?.postMessage(JSON.stringify(message), location.origin);
 }
 
 async function openFile(file) {
@@ -134,7 +137,7 @@ async function openFile(file) {
     const xml = await response.text();
     const frame = document.createElement('iframe');
     frame.title = '流程图编辑器';
-    current = { ...file, etag: response.headers.get('X-Diagram-Version'), xml, saved: xml,
+    current = { ...file, etag: response.headers.get('X-Diagram-Version') || response.headers.get('ETag') || file.etag, xml, saved: xml,
       changed: 0, lastWrite: Date.now(), ready: false, writing: false, frame };
     showEditor(true);
     element('name').textContent = file.name;
@@ -177,21 +180,25 @@ async function save(session, manual) {
   session.lastWrite = Date.now();
   status('正在保存…');
   try {
-    const response = await request(endpoint({ id: session.id, name: session.name }), {
+    const response = await request(endpoint({ id: session.id }), {
       method: 'PUT',
       headers: { 'If-Match': session.etag, 'Content-Type': 'text/plain; charset=utf-8' },
       body: xml
     });
-    session.etag = response.headers.get('X-Diagram-Version');
+    session.etag = response.headers.get('X-Diagram-Version') || response.headers.get('ETag') || session.etag;
     session.saved = xml;
     session.autoPaused = false;
+    if (session !== current) return;
     const dirty = session.xml !== session.saved;
     status(dirty ? '还有修改待保存' : '已保存到云端');
     post(session, { action: 'status', message: dirty ? '还有修改待保存' : '已保存到云端', modified: dirty });
   } catch (error) {
     session.conflict = error.status === 412;
     session.autoPaused = true;
-    status(error.message);
+    if (session === current) {
+      if (session.conflict) element('save').disabled = true;
+      status(error.message);
+    }
   } finally {
     session.writing = false;
     if (session.pendingManual) {
@@ -251,8 +258,10 @@ element('download').addEventListener('click', () => {
   const link = document.createElement('a');
   link.href = url;
   link.download = current.name + '.drawio';
+  document.body.append(link);
   link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 });
 element('back').addEventListener('click', () => {
   if (current?.writing) { status('正在保存，请稍候。'); return; }
@@ -277,18 +286,23 @@ element('new').addEventListener('click', async () => {
   let file;
   try { file = await create(name, blank); } catch (error) { show(error.message); }
   finally { busy = false; }
-  if (file) openFile(file);
+  if (file) {
+    await openFile(file);
+    if (!current) refresh().catch(error => show(error.message));
+  }
 });
 element('import').addEventListener('click', () => element('files').click());
 element('files').addEventListener('change', async event => {
-  if (current || busy) return;
+  const selected = [...event.target.files];
+  if (!selected.length || current || busy) return;
   busy = true;
   const errors = [];
-  const selected = [...event.target.files];
+  let imported = 0;
   for (const file of selected) {
     try {
       if (file.size > 10 * 1024 * 1024) throw new Error('文件超过 10 MiB。');
       await create(file.name, file);
+      imported++;
     } catch (error) {
       errors.push(file.name + '：' + error.message);
     }
@@ -297,7 +311,9 @@ element('files').addEventListener('change', async event => {
   busy = false;
   try {
     await refresh();
-    show(errors.length ? errors.join(' ') : '已导入 ' + selected.length + ' 个文件。');
+    show(errors.length
+      ? (imported ? `已导入 ${imported} 个文件。` : '') + errors.join(' ')
+      : '已导入 ' + imported + ' 个文件。');
   } catch (error) { show(error.message); }
 });
 refresh().catch(error => show(error.message));

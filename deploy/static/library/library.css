@@ -10,11 +10,14 @@ h1 { margin: 0; font-size: 15px; }
 button, input { font: inherit; }
 button, .control { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 32px; padding: 0 10px; border: 1px solid #c8d1dc; border-radius: 6px; background: white; color: inherit; text-decoration: none; white-space: nowrap; }
 button:not(:disabled), .control { cursor: pointer; }
+button:not(:disabled):hover, .control:hover { background: #eef2f7; }
+button:focus-visible, .control:focus-visible { outline: 2px solid #234f9f; outline-offset: 2px; }
 button:disabled { opacity: .55; }
 .primary { background: #234f9f; border-color: #234f9f; color: white; }
-#notice, #library { margin: 12px auto; padding: 0 12px; max-width: 1040px; }
+.primary:not(:disabled):hover { background: #1c3f80; border-color: #1c3f80; }
+#notice, #library { margin: 12px auto; padding: 0 12px; }
 #notice:empty { display: none; }
-#library { max-width: none; overflow-x: auto; }
+#library { overflow-x: auto; }
 @media (min-width: 960px) {
   #library { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
 }

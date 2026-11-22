@@ -14,25 +14,25 @@
   <div class="toolbar">
     <a class="control" href="/auth/logout">退出登录</a>
     <a class="control" href="/">打开独立编辑器</a>
-    <button id="import" disabled>导入文件</button>
+    <button id="import" type="button" disabled>导入文件</button>
     <input id="files" type="file" accept=".drawio,.xml" multiple hidden>
-    <button id="new" class="primary" disabled>新建流程图</button>
+    <button id="new" type="button" class="primary" disabled>新建流程图</button>
   </div>
 </header>
 <header id="editor-bar" class="bar" hidden>
-  <button id="back">返回列表</button>
+  <button id="back" type="button">返回列表</button>
   <strong id="name"></strong>
   <span id="save-status" role="status"></span>
   <label class="control"><input id="auto" type="checkbox"> 自动同步</label>
-  <button id="download" disabled>下载副本</button>
-  <button id="save" class="primary" disabled>手动保存</button>
+  <button id="download" type="button" disabled>下载副本</button>
+  <button id="save" type="button" class="primary" disabled>手动保存</button>
 </header>
 <main>
   <p id="notice" role="status">正在载入流程图…</p>
-  <section id="library">
+  <section id="library" hidden>
     <table>
       <thead><tr>
-        <th scope="col" id="name-heading" aria-sort="none"><button id="sort-name">名称 <span id="sort-arrow" aria-hidden="true">↕</span></button></th>
+        <th scope="col" id="name-heading" aria-sort="none"><button id="sort-name" type="button">名称 <span id="sort-arrow" aria-hidden="true">↕</span></button></th>
         <th scope="col">文件大小</th>
         <th scope="col">上次更新</th>
         <th scope="col">操作</th>
@@ -41,7 +41,7 @@
     </table>
     <table id="second-table" hidden>
       <thead><tr>
-        <th scope="col" id="second-name-heading" aria-sort="none"><button id="second-sort-name">名称 <span id="second-sort-arrow" aria-hidden="true">↕</span></button></th>
+        <th scope="col" id="second-name-heading" aria-sort="none"><button id="second-sort-name" type="button">名称 <span id="second-sort-arrow" aria-hidden="true">↕</span></button></th>
         <th scope="col">文件大小</th>
         <th scope="col">上次更新</th>
         <th scope="col">操作</th>

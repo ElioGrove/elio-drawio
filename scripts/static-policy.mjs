@@ -22,6 +22,8 @@ export function assertPublicContent(path, text) {
   if (rules.some(rule => rule.test(text))) throw new Error(`Potential credential in: ${path}`);
 }
 
+const binaryAssetPattern = /\.(?:png|gif|jpe?g|ico|webp|woff2?|ttf|eot|pdf)$/i;
+
 export async function checkStatic(root) {
   let files = 0, bytes = 0, largest = { path: '', bytes: 0 };
   async function walk(dir) {
@@ -33,7 +35,7 @@ export async function checkStatic(root) {
       if (stat.isDirectory()) { await walk(full); continue; }
       if (!stat.isFile()) throw new Error(`Unsupported asset: ${path}`);
       if (stat.size > 25 * 1024 * 1024) throw new Error(`Asset exceeds 25 MiB: ${path}`);
-      assertPublicContent(path, await readFile(full, 'utf8'));
+      if (!binaryAssetPattern.test(path)) assertPublicContent(path, await readFile(full, 'utf8'));
       files++; bytes += stat.size;
       if (stat.size > largest.bytes) largest = { path, bytes: stat.size };
     }
@@ -42,7 +44,7 @@ export async function checkStatic(root) {
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error('Output must be a real directory');
   await walk(root);
   if (files > 20_000) throw new Error('Output exceeds Pages Free file limit');
-  for (const required of ['index.html', '404.html', '_headers', 'js/app.min.js', 'js/PreConfig.js', 'js/PostConfig.js', 'LICENSE']) {
+  for (const required of ['index.html', '404.html', '_headers', '_routes.json', 'library/index.html', 'js/app.min.js', 'js/PreConfig.js', 'js/PostConfig.js', 'LICENSE']) {
     if (!(await lstat(join(root, required))).isFile()) throw new Error(`Missing entry: ${required}`);
   }
   return { files, bytes, largest };

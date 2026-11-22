@@ -8,10 +8,10 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const source = join(root, 'src/main/webapp');
 const staging = join(root, '.static-build');
 const output = join(root, 'dist');
-const directories = ['images', 'img', 'styles', 'resources', 'mxgraph', 'shapes', 'stencils', 'templates', 'math4'];
-const jsDirectories = ['cryptojs', 'deflate', 'elk', 'freehand', 'gliffy', 'jszip', 'libavoid-js', 'mermaid', 'orgchart', 'plantuml', 'rough', 'sanitizer', 'spin', 'vsd'];
-const files = ['index.html', 'favicon.ico', 'clear.html', 'open.html', 'vsdxImporter.html', 'shortcuts.svg', 'export-fonts.css',
-  ...['bootstrap.js', 'main.js', 'app.min.js', 'extensions.min.js', 'orgchart.min.js', 'shapes-14-6-5.min.js', 'stencils.min.js', 'viewer.min.js', 'viewer-static.min.js', 'clear.js', 'open.js', 'math-print.js', 'vsdxImporter.js'].map(f => `js/${f}`)];
+const directories = ['images', 'img', 'styles', 'resources', 'mxgraph/css', 'mxgraph/images', 'stencils', 'templates', 'math4'];
+const jsDirectories = ['elk', 'gliffy', 'libavoid-js', 'mermaid', 'orgchart', 'plantuml'];
+const files = ['index.html', 'favicon.ico', 'open.html', 'shortcuts.svg', 'export-fonts.css',
+  ...['bootstrap.js', 'main.js', 'app.min.js', 'extensions.min.js', 'orgchart.min.js', 'shapes-14-6-5.min.js', 'stencils.min.js', 'viewer-static.min.js', 'open.js', 'math-print.js'].map(f => `js/${f}`)];
 
 await rm(staging, { recursive: true, force: true });
 await mkdir(staging, { recursive: true });
@@ -58,6 +58,9 @@ try {
     const digest = createHash('sha256').update(await readFile(join(staging, asset))).digest('hex').slice(0, 16);
     const versionedAsset = `library/library-${digest}.${extension}`;
     await rename(join(staging, asset), join(staging, versionedAsset));
+    if (!libraryHtml.includes(`"/${asset}"`)) {
+      throw new Error(`Expected library asset reference not found: /${asset}`);
+    }
     libraryHtml = libraryHtml.replace(`"/${asset}"`, `"/${versionedAsset}"`);
   }
   await writeFile(libraryIndex, libraryHtml);
