@@ -1,5 +1,21 @@
 import { passwordGate } from '../auth/password.mjs';
 
+const fingerprintedLibrary = /^\/library\/library-[0-9a-f]{16}\.(?:css|js)$/;
+const fingerprintedVersion = /^[0-9a-f]{16}$/;
+
+function cacheControl(url, response) {
+  if (url.pathname.startsWith('/api/')) return 'private, no-store';
+  const contentType = response.headers.get('Content-Type') || '';
+  if (!response.ok || contentType.includes('text/html')) return 'private, no-cache';
+  if (
+    fingerprintedLibrary.test(url.pathname) ||
+    fingerprintedVersion.test(url.searchParams.get('v') || '')
+  ) {
+    return 'private, max-age=31536000, immutable';
+  }
+  return 'private, max-age=86400';
+}
+
 export async function onRequest({ request, env, next }) {
   const url = new URL(request.url);
   if (url.hostname !== env.APP_HOST) {
@@ -16,6 +32,6 @@ export async function onRequest({ request, env, next }) {
   if (denied) return denied;
   const upstream = await next();
   const response = new Response(upstream.body, upstream);
-  response.headers.set('Cache-Control', url.pathname.startsWith('/api/') ? 'private, no-store' : 'private, no-cache');
+  response.headers.set('Cache-Control', cacheControl(url, upstream));
   return response;
 }
