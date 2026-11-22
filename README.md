@@ -56,3 +56,19 @@ Chrome 123+, Firefox 120+, Safari 17.5+, Opera 109+, Edge 123+, WebView Android 
 draw.io is a registered EU trademark (#018062448).
 
 Do not use the draw.io name or logo in ways that suggest affiliation with, endorsement by, or sponsorship by draw.io. Do not use draw.io logos for your own business, product, project, domain, or social media presence. Do not modify the draw.io logos. Use of draw.io trademarks requires prior written permission.
+
+## 统一安全策略
+
+本项目与其他 ElioGrove 私有应用共用同一套登录与会话安全策略：
+
+- **密码校验**：服务端使用常量时间比对（SHA-256 摘要 / PBKDF2），建议使用 20 位以上高熵随机密码作为管理密码 Secret。
+- **单 IP 阶梯限流（仅计失败）**：
+  - 按 `CF-Connecting-IP` 的 SHA-256 哈希计数（不存储明文 IP）。
+  - 登录成功立即清零该 IP 失败计数；每满 **5 次** 失败（第 5、10 次）锁定 **15 分钟**；累计 **15 次** 及以上失败锁定 **60 分钟**（24 小时无失败自动衰减）。
+  - 锁定期间返回 `429 Too Many Requests` 并附带 `Retry-After` 响应头。
+- **全局分布式熔断**：任意 **1 分钟** 内全站累计失败达到 **30 次** 时触发短时熔断（返回 `429` + `Retry-After`），防止多 IP 代理池撞库消耗 Worker/D1/KV 配额。
+- **会话与 CSRF 防护**：
+  - 会话密钥或签名与当前管理员密码绑定，修改管理员密码后旧会话立即失效。
+  - Cookie 统一使用 `HttpOnly; Secure; SameSite=Strict`；登录、退出及变更接口强制同源 `Origin` 校验并附带 `Cache-Control: no-store`、`X-Content-Type-Options: nosniff`。
+- **公开图标放行**：仅放行站点 `favicon` 图标路径用于浏览器标签与导航站自动抓取，其余页面与 API 严格鉴权。
+- **边缘层防护建议**：在 Cloudflare WAF 为登录接口（`POST /auth/login`、`POST /api/login`、`POST /api/auth/login`、`POST /login`）配置 Rate Limiting 规则作为第一道防线。

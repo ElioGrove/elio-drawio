@@ -2,11 +2,57 @@ import { egSvg } from './eg-logo.mjs';
 
 const cookie = '__Host-elio_session';
 const age = 7 * 86400;
-const windowMs = 900000;
+const shortLockMs = 15 * 60 * 1000;
+const longLockMs = 60 * 60 * 1000;
+const decayMs = 24 * 60 * 60 * 1000;
+const globalWindowMs = 60 * 1000;
+const globalMaxFailures = 30;
 const encoder = new TextEncoder();
 const hex = (bytes) =>
   Array.from(new Uint8Array(bytes), (n) => n.toString(16).padStart(2, '0')).join('');
 const digest = (input) => crypto.subtle.digest('SHA-256', encoder.encode(input));
+async function checkLoginLimit(db, ipKey, now) {
+  const globalKey = 'global:' + Math.floor(now / globalWindowMs);
+  const [globalRow, ipRow] = await Promise.all([
+    db.prepare('SELECT window,count FROM password_attempts WHERE ip=?').bind(globalKey).first(),
+    db.prepare('SELECT window,count FROM password_attempts WHERE ip=?').bind(ipKey).first(),
+  ]);
+  if (globalRow && globalRow.count >= globalMaxFailures && globalRow.window > now) {
+    return Math.max(1, Math.ceil((globalRow.window - now) / 1000));
+  }
+  if (ipRow && ipRow.window > now) {
+    return Math.max(1, Math.ceil((ipRow.window - now) / 1000));
+  }
+  return 0;
+}
+async function recordLoginFailure(db, ipKey, now) {
+  const minute = Math.floor(now / globalWindowMs);
+  const globalKey = 'global:' + minute;
+  const globalUntil = (minute + 1) * globalWindowMs;
+  const existing = await db
+    .prepare('SELECT window,count FROM password_attempts WHERE ip=?')
+    .bind(ipKey)
+    .first();
+  const count = !existing || now - existing.window > decayMs ? 1 : existing.count + 1;
+  const nextWindow =
+    count >= 15
+      ? now + longLockMs
+      : count >= 5 && count % 5 === 0
+        ? now + shortLockMs
+        : now;
+  await db.batch([
+    db
+      .prepare(
+        'INSERT INTO password_attempts(ip,window,count) VALUES(?,?,1) ON CONFLICT(ip) DO UPDATE SET count=count+1, window=excluded.window',
+      )
+      .bind(globalKey, globalUntil),
+    db
+      .prepare(
+        'INSERT INTO password_attempts(ip,window,count) VALUES(?,?,?) ON CONFLICT(ip) DO UPDATE SET window=excluded.window, count=excluded.count',
+      )
+      .bind(ipKey, nextWindow, count),
+  ]);
+}
 const equalDigest = (left, right) => {
   if (typeof crypto.subtle.timingSafeEqual === 'function')
     return crypto.subtle.timingSafeEqual(left, right);
@@ -115,17 +161,10 @@ export async function passwordGate(request, env) {
     )
       return error(400, '无效的登录表单');
     const now = Date.now();
-    const ip = hex(await digest(request.headers.get('CF-Connecting-IP') || 'local'));
-    const window = Math.floor(now / windowMs);
-    const attempt = await db
-      .prepare(
-        'INSERT INTO password_attempts(ip,window,count) VALUES(?,?,1) ON CONFLICT(ip) DO UPDATE SET count=CASE WHEN window=excluded.window THEN count+1 ELSE 1 END, window=excluded.window RETURNING count',
-      )
-      .bind(ip, window)
-      .first();
+    const ipKey = 'ip:' + hex(await digest(request.headers.get('CF-Connecting-IP') || 'local'));
     const library = url.searchParams.get('library') === '1';
-    if (attempt.count > 10) {
-      const retryAfter = Math.max(1, Math.ceil(((window + 1) * windowMs - now) / 1000));
+    const retryAfter = await checkLoginLimit(db, ipKey, now);
+    if (retryAfter > 0) {
       return loginPage(429, '登录尝试过多，请稍后再试。', library, {
         'Retry-After': String(retryAfter),
       });
@@ -152,10 +191,18 @@ export async function passwordGate(request, env) {
     }
     const password = new URLSearchParams(bodyText).get('password') || '';
     const [left, right] = await Promise.all([digest(password), digest(env.ADMIN_PASSWORD)]);
-    if (!equalDigest(left, right)) return loginPage(401, '密码不正确。', library);
+    if (!equalDigest(left, right)) {
+      await recordLoginFailure(db, ipKey, now);
+      return loginPage(401, '密码不正确。', library);
+    }
     const session = hex(crypto.getRandomValues(new Uint8Array(32)));
     await db.batch([
-      db.prepare('DELETE FROM password_attempts WHERE window<?').bind(window),
+      db.prepare('DELETE FROM password_attempts WHERE ip=?').bind(ipKey),
+      db
+        .prepare(
+          "DELETE FROM password_attempts WHERE (ip LIKE 'global:%' AND window<=?) OR (ip NOT LIKE 'global:%' AND window<?)",
+        )
+        .bind(now, now - decayMs),
       db.prepare('DELETE FROM password_sessions WHERE expires<=?').bind(now),
       db
         .prepare('INSERT INTO password_sessions(id,expires) VALUES(?,?)')
